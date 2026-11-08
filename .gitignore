@@ -1,0 +1,6 @@
+build/
+*.o
+puffer
+__pycache__/
+*.pck
+steam_data.json

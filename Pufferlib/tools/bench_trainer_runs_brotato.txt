@@ -1,0 +1,25 @@
+# Brotato (Demon-profile core) trainer runs. Binary: ./puffer (brotato GPU env,
+# built at 22:19 before the in-flight brotato_gpu_fast kernel work). Env cost is
+# read from these with cudagraphs off (perf/rollout vs perf/train split).
+# obs 161 / act 21 / plain MLP, policy hidden 256 x2 = 440.1K params.
+# NOTE: Brotato allocates one BtState (6.42 MiB) per agent; ~1500 agents is the
+# VRAM ceiling on a 12 GB card, so total_agents stays small here.
+br_1024_h64_g-1 | --vec.total_agents=1024 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=-1
+br_1024_h64_g1 | --vec.total_agents=1024 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=1
+br_1280_h64_g-1 | --vec.total_agents=1280 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=-1
+br_1280_h64_g1 | --vec.total_agents=1280 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=1
+br_1536_h64_g-1 | --vec.total_agents=1536 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=-1
+br_1536_h64_g1 | --vec.total_agents=1536 --vec.num_buffers=1 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=20000000 --base.cudagraphs=1
+br1536_h128_mb65k | --vec.total_agents=1536 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=65536 --train.total_timesteps=40000000
+# kept as negative records: 1536 envs + a second trainer process on the GPU OOMs
+# (cudaMalloc(envs), 11.3 GB of BtState is the whole card), and 1280 % (65536/128)
+# != 0 trips the "agents must be divisible by minibatch rows" assert.
+br1536_h256_mb65k | --vec.total_agents=1536 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=256 --train.minibatch_size=65536 --train.total_timesteps=40000000
+br1536_h64_mb32k | --vec.total_agents=1536 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=32768 --train.total_timesteps=40000000
+br1280_h128_mb65k | --vec.total_agents=1280 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=65536 --train.total_timesteps=40000000
+# VRAM-limit follow-ups at 1536/1280 envs: mb 32768 needs more device memory than
+# the 1.3 GB the trainer has left once 1536 x 6.42 MiB of BtState is resident
+# (cudaGraphInstantiate / step kernel launch OOM), while 1280 envs + h128 + mb
+# 32768 runs fine with graphs on.
+br1280_h128_mb32k_g1 | --vec.total_agents=1280 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --train.total_timesteps=10000000
+br1536_h128_mb32k_g-1 | --vec.total_agents=1536 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --train.total_timesteps=10000000 --base.cudagraphs=-1

@@ -1,0 +1,198 @@
+{
+ "contract": "brotato-rl-full-state",
+ "contract_version": 5,
+ "full_contract_compatible": true,
+ "document": "Trace contract for the Brotato RL bridge. Observation schema: 79 core features plus 62 weapon/shop/profile features, 20 shop-action features and the 42-float Demon/endless block, 203 floats total; 31 actions. Older checkpoints and traces are incompatible (v4 rows are rejected).",
+ "artifacts": {
+  "full": {
+   "path": "<BROTATO_RL_TRACE>, default user://rl_trace.jsonl; smoke default $BROTATO_RUN_DIR/rl_out/rl_trace.<tag>.jsonl",
+   "first_line": "a data record (no header line)",
+   "obs": "203 floats, core schema, obs_complete = 1, obs_version = 5",
+   "consumed_by": "tests/brotato_trace_compare.py and ocean/brotato/bridge/parse_trace.py"
+  },
+  "partial": {
+   "path": "<BROTATO_RL_TRACE> with BROTATO_RL_PARTIAL=1, e.g. rl_trace.partial.jsonl",
+   "first_line": "a bridge_header record, which is NOT a data record",
+   "obs": "6 floats (x, y, 0, 0, hp, max_hp), obs_complete = 0, obs_version = 0",
+   "purpose": "diagnostics only; structurally invalid for a full-observation validator, by construction, so an incomplete trace can never pass full-contract validation"
+  },
+  "side_files": {
+   "<trace>.meta.json": "config, observation schema/notes/unmapped ids, action/injection report, policy report, settings repairs, run-boot facts, engine info",
+   "<trace>.summary.json": "outcome: ok, reason, samples, hp range, first_enemy_tick, arena snapshots, extension/applied counters, failure code"
+  }
+ },
+ "record": {
+  "required": {
+   "tick": "int, strictly increasing; the physics step the record describes",
+   "action": "int; the action injected for that step, -1 when no action was ever injected",
+   "obs": "array of 203 finite numbers (partial mode: 6)",
+   "hp": "number; RunData.get_player_current_health(0)",
+   "wave": "int; RunData.current_wave",
+   "enemies": "int; RunData.current_living_enemies",
+   "x": "number; Player.global_position.x",
+   "y": "number; Player.global_position.y"
+  },
+  "observer_fields": {
+   "obs": {
+    "0": "hp / max_hp",
+    "1": "max_hp / 64",
+    "2": "regen / 30   (Utils.get_capped_stat(stat_hp_regeneration_hash, 0))",
+    "3": "armor / 20   (Utils.get_capped_stat(stat_armor_hash, 0))",
+    "4": "px / 2048",
+    "5": "py / 1536",
+    "6": "1.0 if the player's InvincibilityTimer is running, else 0.0",
+    "7": "phase: 0 combat (arena), 1 shop scene, 2 level-up UI visible",
+    "8": "materials / 100   (RunData.get_player_gold(0))",
+    "9": "level / 20",
+    "10": "xp / xp_need   (RunData.get_next_level_xp_needed(0))",
+    "11-26": "four shop slots: tier/4, materials>=price, dominant_stat/10, clamp(dominant_value*0.1,-1,1)",
+    "27-34": "four level-up slots: stat/12, clamp(value*0.1,-1,1)",
+    "35-64": "six nearest enemies by squared distance: (ex-px)/2048, (ey-py)/1536, ehp/emax, edmg*0.1, elite",
+    "65": "wave / 20",
+    "66": "time_left / wave_duration   (0 when the duration is 0)",
+    "67": "enemy count / 100",
+    "68-76": "three nearest enemy projectiles with squared distance < 70000: dx/2048, dy/1536, dmg*0.1; absent slots 0",
+    "77-78": "nearest consumable: dx/2048, dy/1536; absent 0",
+    "79-126": "six weapon records, 8 fields each (slot i at 79+8i): id, tier, kind, remaining cooldown, damage, range, crit chance, cursed. id = 0.0 when the slot is empty (core sentinel BT_WEAPON_NONE 0xFFFF; weapon index 0 is real and emits 1/(BT_NWEAPONS+1)), else (weapon index + 1)/(BT_NWEAPONS + 1); tier = WeaponData.tier/4 (ItemParentData.Tier 0 COMMON..5 DANGER_5); kind = 0 MELEE / 1 RANGED (WeaponData.Type); cooldown = clamp(current_stats cooldown_left / cooldown, 0, 1) in ticks (0 ready, 1 just fired; period <= 0 -> 0.0), and ALWAYS 0.0 in the shop phase (phase == 1) because the shop scene has no live weapon attack clock - the stored counter is not reset; damage = effective damage * 0.1; range = effective max_range / 2048; crit chance = effective crit_chance (source 0..1 fraction); cursed = 1/0. An empty slot emits eight 0.0.",
+    "127-138": "four typed shop offers, 3 fields each (offer i at 127+3i): offer type, canonical content id, cursed. offer type = 0.0 empty/unavailable, 1.0 item, 2.0 weapon; content id = 0.0 when empty, else (index + 1)/(count + 1) with count = BT_NITEMS for an item offer and BT_NWEAPONS for a weapon offer; cursed = 1/0. The unchanged item-only block obs[11..26] emits the core's empty encoding for a weapon offer (shop[i] = 0).",
+    "139-140": "profile: canonical character index and weapon slot limit / 6",
+    "141": "shop offer currency: 1 for HP, 0 for gold; zero outside the shop",
+    "142-157": "four shop offers, four values each: exact price in offer currency, eligibility, affordability, and buyability including purchase delay; zero for absent offers",
+    "158-160": "reroll: exact gold price, free flag, and availability; zero outside the shop",
+    "161-164": "Demon/endless: harvesting/100 (Utils.get_stat(stat_harvesting_hash,0)), luck/100 (Utils.get_stat(stat_luck_hash,0)), RunData.get_endless_factor() squashed as ef/(1+ef) (0 through wave 20), wave/50",
+    "165-173": "shop-owned state: 165..168 offer lock flag per slot (RunData.get_player_locked_shop_items / the core's shop_locked[]), 169 crate offer kind (0 none, 1 item, 2 weapon; item boxes are always items), 170 crate id (idx+1)/(N+1), 171 crate cursed, 172 crate ready (the offer exists and take/recycle are live), 173 level-up reroll price in gold (0 = free or not offered)",
+    "174-197": "owned copy count of the 24 curated ArosRising High-Endless guide items (BT_OBS_GUIDE_ITEMS, brotato_core.h), min(count,4)/4: bag, crown, hunting trophy, coupon, dangerous bunny, recycling machine, lure, anvil, alien eyes, garden, improved tools, explosive shells, plastic explosive, alien tongue, sad tomato, torture, padding, tardigrade, silver bullet, grind magical leaf, vigilante ring, bloody hand, spicy sauce, alien magic",
+   "198-202": "v5 mask tail: 198 ban-token budget (remaining_ban_token / BAN_MAX_TOKEN, 0.0 when the ban UI is off), 199..202 level-up offer presence flag per slot (1.0 when the slot shows a real offer) - the two conditions the artifact's ban and level-up action mask read"
+   },
+   "enemy_stats": "enemy.current_stats.health / max_stats.health / current_stats.damage; elite via the enemy's is_elite property",
+   "projectile_damage": "Projectile.get_damage()",
+   "shop/level-up": "read live only in those phases; during combat the core's own empty-slot encoding is emitted (BT_ITEMS[0] features = tier 1/4, price 65, dom 0, mag 8.0 -> 0.25, materials>=65, 0.0, 0.8; BT_UPGRADES[0] = stat 0, value 3.0 -> 0.0, 0.3), which is exactly what bt_core_observe produces with shop[i]=0",
+   "weapon/shop/profile": "obs[79..140] mirror bt_weapon_observe_append exactly. Weapon stats are the LIVE effective Weapon.current_stats (per-run item/character scaling), read through bt_weapon_stats(s, slot, out); tier and kind come from the canonical table (wpn_tier / BT_WEAPONS[id].kind). The weapon cooldown fraction is 0.0 in the shop phase (phase 1): the shop scene has no live Weapon node / attack clock, so it is reported ready and the stored counter is NOT reset. Shop offers are the live typed offers (shop_kind / shop_id / shop_cursed). The profile slot limit is the LIVE weapon_slot stat (upgrades change it), never a per-character constant. Weapon ids are canonical BT_WEAPONS indices; BT_WEAPON_NONE = 0xFFFF is the only 'none' (index 0 is a real weapon)."
+  },
+  "extra": {
+   "max_hp": "int; RunData.get_player_max_health(0)",
+   "next_action": "int; the action chosen at that step for the following step (the policy input/output pair is (obs[t], next_action[t]) = (obs[t], action[t+1]))",
+   "action_applied": "int 0/1; 1 only when the injected direction was served during that step AND the player's own _current_movement matched it (see action section)",
+   "obs_version": "int, 5 for the full schema (a 4 row is a v4 trace and is rejected), 0 for partial diagnostics",
+   "obs_complete": "int; 1 only when all 203 floats are real or documented empty encodings, with no observer errors or unmapped values",
+   "contract": "String, 'full_v5' (or 'partial_v0' in diagnostics mode)",
+   "difficulty": "int; RunData.current_difficulty (5 = Danger 5)",
+   "zone": "int; RunData.current_zone",
+   "gold": "int; RunData.get_player_gold(0)",
+   "level": "int; RunData.get_player_level(0)",
+   "xp": "number; RunData.get_player_xp(0)",
+   "living_enemies": "int; RunData.current_living_enemies (duplicate of enemies under the RunData name)",
+   "living_trees": "int; RunData.current_living_trees",
+   "enemy_nodes": "int; live Enemy nodes in the scene (cross-check of living_enemies)",
+   "player_nodes": "int; live Player nodes",
+   "pet_nodes": "int; live Pet nodes",
+   "projectile_nodes": "int; children of the scene's EnemyProjectiles container",
+   "consumable_nodes": "int; children of the scene's Consumables container",
+   "wave_in_progress": "int 0/1; RunData.wave_in_progress",
+   "wave_time_left": "number; the arena WaveTimer's time_left (-1 when unavailable)",
+   "wave_duration": "number; the arena WaveTimer's wait_time (-1 when unavailable)",
+   "phase": "int; 0 combat (arena), 1 shop scene, 2 level-up UI visible",
+   "action_source": "String; which source produced next_action: script, policy, script_fallback, none",
+   "policy_ok": "int 0/1; whether the policy accepted the observation at that step",
+   "policy_error": "String; verbatim policy rejection reason (empty when ok)",
+   "policy_value": "number; policy value head output",
+   "policy_error_count": "int; cumulative fallbacks away from the policy",
+   "action_verify_error": "String, present only when the injection was not registered",
+   "scene": "String; the current scene's root name (Main while sampling)",
+   "position_carried": "int 0/1; 1 when x/y is the last real arena position rather than a live Player node (shop rows have no Player node)",
+   "obs_unmapped": "array of Strings, present only on incomplete rows: which live offer could not be mapped (e.g. 'shop[0]:item_unknown', 'level_up[2]')",
+   "obs_errors": "array of Strings: defaulted or unavailable required fields; a non-empty array forces obs_complete = 0",
+   "rng_math_draws": "int; cumulative draws from the GLOBAL Math RNG stream (Engine.get_math_rand_draw_count(), diagnostic engine only: RandomPCG::rand() behind Math.rand/randf/randd/randi/rand_range/randomize). Absent unless the engine exposes the counter.",
+   "rng_utils_draws": "int; cumulative draws from the game's seeded Utils stream (Utils._rng.get_draw_count()). Absent unless the engine exposes the counter.",
+   "rng_math_draws_step": "int; rng_math_draws delta since the previous row = the global stream words this physics step consumed",
+   "rng_utils_draws_step": "int; rng_utils_draws delta since the previous row",
+   "floating_text_nodes": "int; live FloatingText children of the arena's FloatingTexts container. Must stay 0: the bridge pins the floating-text manager so its effect-only global rand_range draw never runs.",
+   "shop_state": "object, present on a row that drove a shop action: {action, kind, ok, error, applied, verify_error, after:{gold, offers, scene, weapon_count, ban_tokens, banned_count, locked_count}} - the driver's own report plus the post-action state the verifier snapshotted",
+   "level_up_state": "object, present on a row that drove a level-up action: same shape as shop_state, with the level-up snapshot (max_hp, level, pending, gold, item_count, offers) as `after`",
+   "action_file_index": "int, action_source=file only: the number of stream ids consumed up to and including this row's action, so a row is tied to its line of the recorded action file"
+  }
+ },
+ "action": {
+  "count": 31,
+  "table": "phase-factored, one masked discrete head. Combat (phase 0): 0 hold, 1 N, 2 NE, 3 E, 4 SE, 5 S, 6 SW, 7 W, 8 NW (core BT_MOVE_X/BT_MOVE_Y). Shop (phase 1): 0-3 buy offer i, 4 reroll, 8 go to the next wave, 9-14 recycle weapon slot (slot = action - 9), 15-20 combine weapon slot (slot = action - 15), 21-24 toggle lock on offer (slot = action - 21), 25-28 ban offer (slot = action - 25). Level-up (phase 2): 0-3 choose offer i, 4 reroll the offers. Crate (phase 2 with an open offer): 29 take the crate item, 30 recycle the crate item. Movement actions are 0..8 only; 9..30 are nonmovement.",
+  "injection": {
+   "single_path": "the bridge node presses/releases the four analog actions the original movement behavior reads (analog_move_left/right/up/down; PlayerMovementBehavior.get_vector_for_input_prefix(\"analog_\") for a single non-coop player). MovementBehavior, Unit._can_move, collision and knockback stay in charge.",
+   "applied_criterion": "action_applied = 1 when the player's _current_movement after the step equals the vector the ENGINE derives from the pressed actions (Input.get_vector at verify time) - not a table value. HOLD presses nothing and is a real, replayable action that never registers movement.",
+   "removed_after_proof": [
+    "ModLoader script extension on the movement behavior (measured never dispatched in this engine build: the instance reported the takeover metadata and the extension's private method, yet the inherited method resolved to the base and the serve counter stayed 0)",
+    "direct-state diagnostic (writing _current_movement/_move_locked: it proved movement works, 952/1200 rows applied, but bypasses the native input path so it was not retained)",
+    "adaptive mode switching (never a delivered design)"
+   ]
+  },
+  "applied_semantics": "action_applied = 1 iff the injected action is not hold, the extension stamped the same physics frame it was injected for, and player._current_movement equals the injected vector afterwards. Hold requests Vector2.ZERO and therefore never reports applied.",
+  "completion_semantics": "each record describes one completed physics step: the state (including obs) is post-step, action is the action injected for that step and action_applied is its verification. next_action is the choice made at that step for the next one, so a policy pair is (obs[t], next_action[t]).",
+  "sources": {
+   "script": "deterministic sequence (BROTATO_RL_SCRIPT_ACTIONS, default 8,2,4,6,0,3,1,5,7,0 held BROTATO_RL_SCRIPT_HOLD_TICKS=30 physics ticks each)",
+   "policy": "rl_policy.gd forward pass; falls back to script with the reason recorded when it is unavailable or rejects the observation",
+   "none": "always hold (action 0)"
+  },
+  "not_implemented": "combat is movement only: actions 9..20 (6 recycle + 6 combine) are nonmovement and are recorded as HOLD in the combat phase, never as a diagonal-movement clamp. In the shop phase the bridge drives the game's own handlers: 0-3 buy that slot, 4 reroll, 8 skip, 9-14 recycle the weapon in slot action-9, 15-20 combine the weapon in slot action-15.",
+  "phase_actions": {
+   "combat": "0 hold, 1 N, 2 NE, 3 E, 4 SE, 5 S, 6 SW, 7 W, 8 NW (core BT_MOVE_X/BT_MOVE_Y) injected as a movement direction and applied when the movement extension served that frame and player._current_movement matched; 9-20 are nonmovement and HOLD",
+   "shop": "0-3 buy that slot (WeaponData -> buy_weapon, ItemData -> buy_item), 4 reroll, 8 skip to the next wave, 9-14 recycle the weapon in slot action-9, 15-20 combine the weapon in slot action-15; applied when gold moved (buy/recycle/combine), the offer list changed (reroll) or the scene left the shop (skip)",
+   "level_up": "0-3 choose that offer through the UpgradesUI container; applied when the pending list for player 0 shrank (or a stat changed)"
+  },
+  "first_step": "The first completed step is seeded as HOLD (action 0) by the bootstrap, because the engine's own input for it is 'no input'; it is never an uninitialised -1, so a replay can apply it."
+ },
+ "invariants": {
+  "no_fabricated_values": "no observation component is invented; absent enemies/projectiles/consumables are written as the core writes them (zero), empty shop/level-up slots carry the core's own empty-slot encoding, an empty weapon slot emits eight 0.0 and an empty shop offer 0.0/0.0/0.0, and a live offer that could not be mapped makes the row obs_complete = 0 with obs_unmapped instead of passing the fallback off as a complete observation Any feature the observer had to default is named in obs_errors and forces obs_complete = 0, so a defaulted feature can never travel as part of a 'complete' row.",
+  "danger_5_bull_boot": "max_hp and hp are 30 for character_bull at Danger 5 (PlayerRunData.DEFAULT_MAX_HP 10 + bull_effect_1.tres stat_max_hp 20)",
+  "real_state_only": "samples are written only while the arena scene is active and a live Player node exists; the trace stops when the scene leaves the arena",
+  "scope": "These invariants describe the artifact's own encoding rules only. They are not evidence that any run has succeeded: the bridge payload must compile and the launcher must isolate user data before a trace exists at all."
+ },
+ "known_divergences": [
+  "enemy ordering follows scene-tree (spawn) order rather than the core's SoA index order, so equal-distance ties may select a different enemy",
+  "shop/level-up slots are read live only in their phases; a live offer whose id cannot be mapped onto the core tables is reported in meta.obs.unmapped_ids and keeps the empty-slot encoding instead of an invented feature",
+  "the CPU core's step and the game's physics are separate implementations; this bridge reports the game's own numbers and claims no parity",
+  "live level-up offer features are derived from the offer's dominant effect (stat name -> core stat index, value) because BT_UPGRADES is indexed by table row; the run reads (stat/12, clamp(value*0.1)), which is what bt_core_observe computes from that row. An offer that cannot be read keeps the core's empty-slot encoding and is reported in meta.obs.unmapped_ids",
+  "a weapon offer in the shop carries its own typed record obs[127..138]; the unchanged item-only block obs[11..26] keeps shop[i] = 0 for it, so that block reports the core's empty-item encoding rather than a fabricated item",
+  "weapon effective damage/range/crit/cooldown are read from the live weapon (per-run item/character scaling); tier and kind come from the canonical table, so a weapon whose id cannot be mapped keeps the empty-slot encoding and is reported in meta.obs.unmapped_ids"
+ ],
+ "validation": {
+  "full": "python3 ocean/brotato/bridge/parse_trace.py <trace> --check [--json out.json]",
+  "partial": "python3 ocean/brotato/bridge/parse_trace.py <trace.partial.jsonl> --partial",
+  "acceptance_gate": "rows>0, observation width 203 (a 198-wide recording is a v4 trace, a 161-wide one a v3 trace: both are older contracts and are rejected, not compared field-by-field), valid profile and action checks, and no incomplete rows; this does not establish full native/game parity",
+  "movement_evidence": "Historical pre-cutover runs verified native analog input and player movement; they do not validate the 161-input schema.",
+  "progression_evidence": "2400-tick run: waves 2, phase ticks {combat 2397, shop 2, level_up 1}, progression {shop_rerolls 1, shop_skips 1, level_ups_chosen 1, failures 0} - the shop and level-up actions went through the game's own ShopItemsContainer/UpgradesUI handlers.",
+  "shop_buy_proof": {
+   "status": "PROVEN (isolated tagged run: BROTATO_RUN_DIR=/tmp/bt_shop, tag shopbuy, 2700 ticks, canonical launcher)",
+   "evidence": "progression {shop_actions 3, shop_buys 2, shop_rerolls 0, shop_skips 1, level_ups_chosen 1, failures 89, last_error 'shop_slot_3_insufficient_currency'}; first applied buy tick 1320 action 0 with gold 52 -> 29 and action_applied 1; second applied buy tick 1323 action 1 with gold 29 -> 6. 91 buy attempts, only the 2 that the live handler accepted report applied; the other 89 carry the game's own affordability reason, so no grant was fabricated.",
+   "what_counts_as_proof": "at least one row with phase = 1, action in 0..3 and action_applied = 1, produced by the game's own shop handler (ShopItemsContainer.on_shop_item_buy_button_pressed) with the currency actually debited - rl_progress.verify_shop requires the gold value to change for a buy, so applied = 1 cannot be earned by a fake grant.",
+   "how_it_was_driven": "BROTATO_RL_SCRIPT_SHOP_ACTIONS=0,1,2,3,8 makes the scripted shop source try to buy slot 0, then 1, 2, 3, then skip, one attempt per BROTATO_RL_SCRIPT_HOLD_TICKS (sequence advances between attempts). The empty default keeps the progression module's own reroll-then-skip behaviour, which is why earlier progression runs reported 0 buys.",
+   "offer_mapping": "The earlier unmapped level_up[1] was resolved by extracting the actual 16-stat, four-tier pool and mapping live effects by stat key and value. upgrade_pool_proof: 2700 rows, zero incomplete observations, two real purchases and one chosen upgrade. Unknown live offers still fail completeness rather than receiving invented features."
+  },
+  "launcher": "bash ocean/brotato/bridge/run_game.sh (canonical, parent-owned; the former brotato_run/smoke.sh was moved into the repo). Unique runs: BROTATO_RUN_DIR + BROTATO_TAG + BROTATO_ISO_HOME."
+ },
+ "observation": {
+  "size": 203,
+  "source": "bt_core_observe: 79 core + 48 weapon + 12 typed shop + 2 profile + 20 shop-action + 42 Demon/endless (the v4 block plus the v5 ban/level-up-presence tail)",
+  "partial_size": 6,
+  "note": "ranges under record.observer_fields.obs are documentation; this field is the authoritative width",
+  "scale": {
+   "arena_w": 2048.0,
+   "arena_h": 1536.0,
+   "max_enemies": 100,
+   "waves": 20,
+   "weapon_slots": 6,
+   "weapons": 253,
+   "characters": 3,
+   "shop_records": 4,
+   "profile_fields": 2,
+   "source": "brotato_obs_tables.json core_revision.obs_constants, parsed from the core headers by gen_obs_tables.py; compiled defaults in rl_obs.gd mirror them. weapons/characters are the canonical table counts (BT_NWEAPONS / BT_NCHARACTERS) and are the id normalizers' denominators.",
+   "legacy_knob": "removed: the bridge emits the current 161-float schema only",
+   "no_compat_mode": true
+  },
+  "sampling": "Full-observation traces sample every physics tick by default (BROTATO_RL_SAMPLE_EVERY=1) so a replay consumer sees no gaps; partial diagnostics mode may set it sparser explicitly."
+ },
+ "transfer_risk": {
+  "statement": "The 203-input observation and 31-action schema rejects older checkpoints (v4 198-float and v3 161-float); no padding or encoder migration is provided. The appended block (obs[161..202]) leaves the v3 161 untouched, so a v3 artifact stays field-comparable but is not loadable.",
+  "reported_by": "PolicyTransfer (2026-11-06): observed brotato_state.h change BT_ARENA_W/H 1280x720 -> 2048x1536 and BT_MAX 64 -> 100 and the later weapon/shop/profile extension; the pre-cutover brotato_policy.json is a 79-float / 9-action artifact.",
+  "how_to_judge": "compare the run meta's obs.core_revision (sha256 of the headers listed in export_policy.CORE_HEADERS - brotato.h / brotato_core.h / brotato_state.h / brotato_weapon_observe.h / brotato_weapons.h / brotato_characters.h / brotato_weapon_inventory.h - plus the constants the bridge used) with the revision the checkpoint was trained against, and the meta's policy.metadata (the artifact's own recorded schema) before attributing a policy failure to the artifact",
+  "no_compat_mode": "Older policies must be retrained for the 203-input schema."
+ }
+}

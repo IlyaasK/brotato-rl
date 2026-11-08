@@ -1,0 +1,361 @@
+{
+	"component": "ocean/brotato/bridge",
+	"version": "1.4.0",
+	"scope": "Brotato original-game bridge and shared 161-float observation contract: 79 core, 62 weapon/shop/profile and 20 actionable shop fields; 21 actions. Generated artifacts and retail packs remain external.",
+	"entry_points": {
+		"verify_payload": "python3 ocean/brotato/bridge/build_mod_pck.py verify",
+		"dry_run": "python3 ocean/brotato/bridge/build_mod_pck.py build --dry-run",
+		"build_patched_pack": "python3 ocean/brotato/bridge/build_mod_pck.py build",
+		"refresh_hashes": "python3 ocean/brotato/bridge/build_mod_pck.py build --dry-run --refresh-hashes",
+		"regenerate_offline_steam_platform": "python3 ocean/brotato/bridge/make_steam_offline_patch.py [--check]",
+		"regenerate_observation_tables": "python3 ocean/brotato/bridge/gen_obs_tables.py [--check]",
+		"smoke_one_episode": "ocean/brotato/bridge/run_game.sh",
+		"parse_full_trace": "python3 ocean/brotato/bridge/parse_trace.py <trace> --check",
+		"parse_partial_trace": "python3 ocean/brotato/bridge/parse_trace.py <trace.partial.jsonl> --partial",
+		"launcher": "bash ocean/brotato/bridge/run_game.sh (canonical; moved into the repo by the parent)",
+		"smoke_one_episode_linux": "BROTATO_RL_SEED=1 BROTATO_MAX_SECONDS=8 bash ocean/brotato/bridge/run_game.sh",
+		"smoke_demon_linux": "BROTATO_CHAR=character_demon BROTATO_WEAPON=weapon_ghost_scepter_1 BROTATO_RL_SEED=1 BROTATO_MAX_SECONDS=180 BROTATO_RL_SCRIPT_SHOP_ACTIONS=0,0,1,1,4,8 BROTATO_TAG=demon_s1 bash ocean/brotato/bridge/run_game.sh",
+		"smoke_demon_endless_linux": "BROTATO_CHAR=character_demon BROTATO_WEAPON=weapon_ghost_scepter_1 BROTATO_ENDLESS=1 BROTATO_RL_WAVE=20 BROTATO_RL_INVULNERABLE=1 BROTATO_RL_SEED=1 BROTATO_MAX_SECONDS=200 BROTATO_TAG=demon_endless bash ocean/brotato/bridge/run_game.sh",
+		"replay_linux": "CXX=g++ python3 ocean/brotato/bridge/replay_cpu.py <trace>.jsonl --output-dir <dir> --seed <seed>",
+		"build_engine_linux": "scons platform=x11 target=release_debug tools=yes -j8  # godot 3.7-dev1 commit 0a9011743f8b62e5f4505fd17ca61fc3621394ef"
+	},
+	"source_roots": {
+		"payload": "ocean/brotato/bridge/mod (bridge-owned, committed)",
+		"repo": "repository root, resolved by walking up to the directory containing ocean/brotato (shared files referenced in place: ocean/brotato/policy/brotato_policy.gd)",
+		"external": "default <repo>/migration/game/external, else $HOME/brotato_mod/external; override with --external-root or $BROTATO_EXTERNAL_ROOT (env-driven since the Linux port; the old macOS default was /Users/leelachebiyyam/brotato_mod/external)",
+		"engine": "Linux: $BROTATO_ENGINE, default $HOME/tools/bin/godot-3.7-dev1 (or $HOME/tools/godot-src/bin/godot.x11.opt.tools.64); macOS (kept): $HOME/tools/Godot.app/Contents/MacOS/Godot",
+		"gdre": "Linux: $BROTATO_GDRE, default $HOME/tools/gdre_linux/gdre_tools.x86_64 (GDRE Tools v2.7.4); macOS (kept): $HOME/tools/Godot RE Tools.app/Contents/MacOS/Godot RE Tools",
+		"retail_inputs": "Linux: staged per run from <repo>/migration/game/{Brotato.pck sha256 2a26ad999a42af33ce96fa7e515c873c8e91bf28a57b937757e7c1ee9b4c4d05, BrotatoAbyssalTerrors.pck, steam_data.json} into $BROTATO_RUN_DIR"
+	},
+	"patch_inventory": {
+		"count": 17,
+		"replaced_engine_files": [
+			{
+				"dest": "res://singletons/platforms/steam.gd.remap",
+				"replaces_sha256": "27ea4875f344c3f9b1925324c0aafef81c31acca40ef1dd10f4ef55071bf213a",
+				"replaces_content": "[remap]\\n\\npath=\"res://singletons/platforms/steam.gdc\"\\n",
+				"new_content": "[remap]\\n\\npath=\"res://mods-unpacked/rlbridge-headlessrl/patches/steam_offline.gd\"\\n"
+			}
+		],
+		"added_mod_files": [
+			"manifest.json, mod_main.gd, rl_cfg.gd, rl_env.gd, rl_policy.gd, rl_run.gd, rl_trace.gd",
+			"rl_obs.gd - the 161-float core observation port",
+			"rl_inject.gd - native analog actions, the 21-action space and completed-movement verification",
+			"brotato_policy.gd (base=repo, referenced in place)",
+			"patches/steam_offline.gd (external, generated)",
+			"brotato_obs_tables.json (external, generated from the core headers)",
+			"brotato_policy.json (external, exported checkpoint artifact)",
+			"rl_progress.gd - shop/level-up actions through the game's own handlers",
+			"diag/boot_diag.gd - loader-state diagnostics without replacing loader scripts",
+			"res://steam_data.json - retail Steam application metadata"
+		],
+		"proprietary_source_policy": "Only generators, guard text and expected hashes are committed. steam_offline.gd (retail steam.gdc decompilation + guard) and brotato_obs_tables.json are regenerated from the user's own pack/headers into the external root and are checked by the generators' --check modes plus build_mod_pck.py verify."
+	},
+	"verified_offline": [
+		{
+			"claim": "Observation width and schema are the core's, not the bridge's invention.",
+			"evidence": "The core declares 161 floats: 79 core, 62 weapon/shop/profile and 20 actionable shop fields. Runtime validation of the current cutover is pending."
+		},
+		{
+			"claim": "rl_obs.gd reproduces every writer in bt_core_observe, including the selection rules.",
+			"evidence": "six nearest enemies by squared distance via the core's own selection sort (first-wins ties), three nearest enemy projectiles with squared distance < 70000 and per-pass consumption marking, nearest consumable with no distance limit, wave 'enemy count / 100' from the live Enemy node count matching the core's `n`."
+		},
+		{
+			"claim": "Empty shop/level-up slots are encoded the way the core encodes them.",
+			"evidence": "Empty slots use table row 0. gen_obs_tables.py reads the current canonical item/effect/upgrade tables and emitted stat names, including the 16-stat, four-tier upgrade pool; rl_obs derives live upgrade features from their actual effect keys and values. The upgrade_pool_proof run contained 2700 complete rows, two purchases and one chosen upgrade."
+		},
+		{
+			"claim": "Movement injection is faithful and player-0-scoped.",
+			"evidence": "The bridge presses/releases the original PlayerMovementBehavior's four analog_move_* actions. The game normalizes input and advances its own kinematic body. No movement-script extension or direct-state override remains."
+		},
+		{
+			"claim": "action_applied reports engine-registered movement, not intent.",
+			"evidence": "rl_inject snapshots the completed pending action before installing the next one and compares the player's _current_movement with the engine input vector. A hold is a replayable action but not counted as movement. fresh_policy recorded 180 native input applications, 179 verified movement transitions, zero verification mismatches and zero policy fallbacks."
+		},
+		{
+			"claim": "The arena boot satisfies every game-side wave-1 spawn precondition.",
+			"evidence": "main.gd _ready starts the wave timer (main.gd:166), connects and initialises the wave manager (main.gd:170-171) and the spawner (main.gd:234-239); zone 0 / wave 1 resolves to 4-5 baby_alien with spawn_timing 1 s, spawn_chance 1.0, min_difficulty 0, so the first enemy is expected at roughly 120-240 ticks. The bridge additionally logs a per-second arena snapshot (wave, timer, living enemies, node counts, spawner/wave-manager presence, player count) and a stall error if no enemy node exists after 300 arena ticks."
+		},
+		{
+			"claim": "Rules out the earlier 'blank lines are lost guards' hypothesis for the file we replace, and the 5381 hash-empty concern.",
+			"evidence": "the GDRE decompile of res://singletons/platforms/steam.gdc differs from the recovered copy only by the guard an earlier session added; Keys.empty_hash == 5381 by construction and ItemService.get_element(..., id=Keys.empty_hash, value=v) is the game's documented match-by-value idiom (RunData.reset(restart) itself uses it, run_data.gd:522)."
+		},
+		{
+			"claim": "Settings with JSON nulls cannot break the boot.",
+			"evidence": "rl_env.gd rebuilds ProgressData.init_general_options/init_gameplay_options/init_accessibilities_options plus the five inline keys, repairs only missing/null/type-contradicting entries, forces 'en' and calls ProgressData.apply_settings() itself with DebugService.no_fullscreen_on_launch set - before RunData.reset() (which reads settings.enemy_scaling) and before the shop/focus paths that read settings.volume."
+		},
+		{
+			"claim": "The retail binary in the run directory cannot execute on macOS; the vanilla engine is used instead.",
+			"evidence": "The retail Brotato.arm64 is a Linux aarch64 ELF and is left untouched. ocean/brotato/bridge/run_game.sh stages the compatible tools/Godot.app/Contents/MacOS/Godot into its macOS bundle; the aligned_seed1 live run launched successfully."
+		},
+		{
+			"claim": "Generated artifacts are reproducible and pinned.",
+			"evidence": "Generated source hashes and the retail pack hash are checked by build_mod_pck.py. gen_obs_tables.py reads the current core headers; changing those headers requires regeneration before packing. A present-but-unhashed optional artifact fails the build and requires an explicit --refresh-hashes invocation."
+		},
+		{
+			"claim": "Full-observation traces cannot be confused with partial ones.",
+			"evidence": "Full and partial traces use separate contract markers; current 161-float runtime validation is pending."
+		},
+		{
+			"claim": "The staged engine copy is re-signed so macOS can launch it; the source engine is never modified.",
+			"evidence": "Copying the signed source Mach-O into a different bundle invalidates its Info.plist signature. run_game.sh signs and verifies only the staged binary/bundle before launch. The aligned_seed1 run printed 'staged bundle signature verified', launched successfully and exited with status 0."
+		},
+		{
+			"claim": "Legacy checkpoint width migration was checked arithmetically, not validated as policy transfer.",
+			"evidence": "Removing two constant-zero inputs preserved the legacy recurrent arithmetic only. The historical 2097152-step checkpoint uses 79 inputs without migration and records its training header and trainer-binary hashes. Source checkpoint SHA-256 65318331be9f1e0767166f53e43b5e764d2917258407ff16b46919744b4c2c83. Neither width agreement nor recurrent arithmetic establishes full simulation parity.",
+			"scope_limit": "Historical 79-input artifact is incompatible with the current 161-input observer; a fresh checkpoint is required."
+		},
+		{
+			"claim": "The historical 79-input checkpoint's recurrent inference matches the independent reference inside Godot.",
+			"evidence": "policy_reference.py probe and validate_forward.gd produced 2 sequences from the historical brotato_policy.json; check passed 5 recurrent steps at rtol=1e-5, atol=1e-4. Checkpoint SHA-256 65318331be9f1e0767166f53e43b5e764d2917258407ff16b46919744b4c2c83. This establishes arithmetic for that artifact, not current-width policy transfer."
+		},
+		{
+			"claim": "A freshly trained recurrent policy drove the original game without scripted substitution (historical 79-wide run).",
+			"evidence": "rl_trace.source_complete_policy_verified.jsonl.summary.json: ok=true, 1500 samples, action.source=policy, 1500 successful inference steps, zero fallbacks and zero incomplete rows. Combat/shop/level-up rows: 1319/180/1. One real purchase and one upgrade succeeded; 179 subsequent purchases failed with shop_slot_1_empty and the policy never left the shop. There were 1198 acknowledged movement applications and 120 verification mismatches. Native evaluation over 32 episodes: baseline score 286.4375, perf 0.190625; trained score 288.5, perf 0.1875 (mean waves cleared 3.8125 versus 3.75). No improvement or full-clear claim is supported.",
+			"scope_limit": "Recorded against the historical 79-wide observer/9-action space and its 79-wide artifact. It is not evidence for the current 141-wide / 21-action bridge, whose policy artifact must be retrained."
+		},
+		{
+			"claim": "Every typed return in the payload crosses a script-class boundary through an explicit 'as' cast, which is the game's own idiom.",
+			"evidence": "rl_trace.find_player(tree) -> Player now returns `_find_first_player(root, 0) as Player` with the walker declared `-> Node`; the game itself uses `body as Player` (entities/units/pet/doc_moth/doc_moth.gd:30, scapegoat.gd:111). No other payload function declares a script-class return type."
+		},
+		{
+			"claim": "Progression (shop + level-up) uses the game's own handlers, verified from the decompiled sources.",
+			"evidence": "base_shop.gd:577 buy_item / :602 buy_weapon / :400 _on_RerollButton_pressed / :298 _on_GoButton_pressed / :273 get_player_shop_items; upgrades_ui_player_container.gd:203 _on_choose_button_pressed -> choose_button_pressed -> upgrades_ui.gd:53 connection -> :185 _on_choose_button_pressed -> emit upgrade_selected -> main.gd:1137 on_upgrade_selected -> RunData.apply_item_effects; offers are ui/menus/upgrades/upgrade_ui.gd:6 public upgrade_data."
+		},
+		{
+			"claim": "The observation reads live shop/level-up offers through those verified accessors.",
+			"evidence": "Phase 1 reads visible ShopItem controls, including their active state and actual purchase price. Phase 2 reads container._get_upgrade_uis()[i].upgrade_data and encodes (stat/12, clamp(value*0.1)). Missing/unmapped offers mark the row incomplete; they are not accepted as genuine empty slots."
+		},
+		{
+			"claim": "The engine's user-data directory is isolated from the retail install.",
+			"evidence": "run_game.sh exports HOME and CFFIXED_USER_HOME to BROTATO_ISO_HOME before launch and verifies the engine-reported user directory is underneath it. aligned_seed1 exited successfully with the user directory confined to its fresh temporary root. No beside-executable override.cfg is used."
+		},
+		{
+			"claim": "Retail companion files ModLoader reads from disk are staged explicitly.",
+			"evidence": "run_game.sh stages BrotatoAbyssalTerrors.pck and steam_data.json beside the pack. The bridge loads the DLC before ProgressData initialises; Windows-only companions are not executed."
+		},
+		{
+			"claim": "The current diagnostic cannot repeat that failure.",
+			"evidence": "diag/boot_diag.gd is a plain Node child of the offline Steam platform: no inheritance, no loader script redirection. One RLBRIDGE-DIAG line is emitted from steam_offline.gd's own _init (whose guard output already appears in every log), then the node polls Engine.get_main_loop() for ModLoaderStore and records its state; nothing in the loader is patched, so the store's script cannot be disturbed."
+		},
+		{
+			"claim": "A remapped loader-store script is a confirmed fault (introduced by an earlier version of this payload) and produces the exact 'Mods are currently disabled' symptom with no CLI flag - but it is NOT established as the cause of the earlier failures.",
+			"evidence": "project.binary binds autoload/ModLoaderStore to res://addons/mod_loader/mod_loader_store.gd, so .gd.remap resolution applies to it. With that path redirected to a script that extends it, the store's script cannot initialise (self-referencing base plus the store's own ModLoaderLog -> ModLoaderStore dependency), ModLoaderStore.ml_options is null, and mod_loader.gd:58's `if not ModLoaderStore.ml_options.enable_mods` evaluates `not null` -> true, printing the message. That is a real fault of my 19-entry payload and it matches the 19-entry symptom.",
+			"scope_limit": "The same message was already observed in the 17-entry pack, before any loader remap existed (parent-supplied chronology: bg194 log A34A). So the self-cycle does NOT explain the earlier occurrence; that one remains unexplained until the boot diagnostics JSON exists. No causal claim is made for it."
+		},
+		{
+			"claim": "The packaged historical 79-input policy is stale.",
+			"evidence": "The current observer requires 161 inputs. Historical 79- and 141-input checkpoints require retraining."
+		},
+		{
+			"claim": "User-data isolation is in place and was confirmed by a real run.",
+			"evidence": "parent smoke with the launcher's HOME/CFFIXED_USER_HOME exports: user:// resolved under the /tmp scratch root, loader diagnostics ml_options_present = true and enable_mods = true. Engine behaviour behind it was measured separately headless (HOME honoured for a throwaway project and for this pack under --main-pack; override.cfg honoured in project-dir mode but not inside a pack). The bridge's smoke gate asserts the diagnostics' user_dir is under BROTATO_ISO_HOME."
+		},
+		{
+			"claim": "Movement is real and driven through the game's own input path; the arena, shop and level-up all ran end to end.",
+			"evidence": "input-path runs (isolated HOME, own pack, original bytecode, SAMPLE_EVERY=1): 1200 ticks -> input_applications 1200, applied_total 952, verify_mismatches 0; 600 ticks on the cleaned payload -> input_applications 600, applied_total 476, verify_mismatches 0, 0 incomplete rows, first row action 0 (HOLD), 0 SCRIPT ERRORs, obs_len 79; per-tick x/y along the commanded directions; the probe shows the original movement behavior script with can_move true and input_vector_now matching the pressed direction. 2400-tick run: waves 2, phase_ticks {combat 2397, shop 2, level_up 1}, progression {shop_rerolls 1, shop_skips 1, level_ups_chosen 1, failures 0}."
+		},
+		{
+			"claim": "The parent independently reproduced the native-input movement path on the full 79 observation.",
+			"evidence": "parent run: 480 ticks, 385 rows applied, 0 incomplete rows, 7 enemies, engine exit 0, CHECK OK - same design as the bridge's own runs (1200 ticks -> 952 applied / 0 mismatches; 600 ticks on the cleaned payload -> 476 applied / 0 mismatches / first row HOLD)."
+		},
+		{
+			"claim": "A real shop purchase works through the live UI, with the currency actually debited.",
+			"evidence": "tagged isolated run via the canonical launcher (2700 ticks, SAMPLE_EVERY=1): progression shop_buys 2, and the applied rows show gold 52 -> 29 (tick 1320, action 0) and 29 -> 6 (tick 1323, action 1) with action_applied 1; 91 attempts total, the other 89 rejected with the game's own affordability reason (last_error 'shop_slot_3_insufficient_currency'). Level-up was reached and one offer was chosen; that row is flagged obs_complete = 0 with obs_unmapped ['level_up[1]'] because the live offer could not be mapped, which the smoke gate correctly fails on."
+		},
+		{
+			"claim": "Policy mode fails closed instead of substituting the scripted source.",
+			"evidence": "mod_main: with action_source=policy, a failed artifact load is a boot failure (policy_load_failed), a disabled harness is a boot failure, and any choice whose source is not 'policy' (load failure, obs rejection, invalid action) aborts the run with failure 'policy_inference_failed' plus the reason, exit code 1, and the trace/meta written so far. Script mode is unchanged."
+		}
+	],
+	"unverified_requires_smoke": [
+		{
+			"item": "Reaching the arena and observing movement/shop/level-up injection with the fixed challenge hashes.",
+			"how": "RLBRIDGE: challenge stat hashes -> {..., \"still_empty\": []}; BOOT OK with Bull 30/30; per-second ARENA snapshots with enemy_nodes > 0; rows with action_applied = 1 in phase 0 and in phases 1/2 (shop rows now exercise the real ShopItem transaction, so a rejected purchase reports the game's own affordability outcome instead of a silent grant)."
+		},
+		{
+			"item": "Root cause of the mods-disabled state (now instrumented rather than asserted) and a mod-loaded arena run.",
+			"how": "rl_out/rl_bridge_diag.json plus the RLBRIDGE-DIAG stdout line give cmdline_args, has_disable_mods_arg, features, options_profile_enable_mods and enable_mods_before. If enable_mods_before is false while has_disable_mods_arg is false, that file is the evidence needed to pin the engine-level cause; the repair keeps the run working meanwhile (repaired_enable_mods=true)."
+		},
+		{
+			"item": "With --enable-mods and the isolated user directory, ModLoader loads the bridge and the arena produces enemies.",
+			"how": "log contains 'RLBRIDGE: rlbridge-headlessrl instantiated' before the first ARENA line; meta.facts.global_user_dir ends in BrotatoRL; a fresh user dir means ProgressData starts from defaults (a printerr that it could not read the save file is expected and benign). The launcher now aborts with exit 3 within BROTATO_BOOT_GRACE if any fatal marker or no RLBRIDGE line appears, instead of waiting the full watchdog."
+		},
+		{
+			"item": "Progression actually advances waves end to end (wave 1 -> level-up UI -> shop -> wave 2).",
+			"how": "summary.phase_ticks shows shop/level_up > 0, summary.waves_seen > 1 at the end, progression.shop_rerolls/shop_skips/level_ups_chosen > 0, and rows carry phase 1/2 with action_applied == 1 where the post-condition held. Any failed progression call prints 'shop action N failed: <reason>' with the game's own post-condition text."
+		},
+		{
+			"item": "The ad-hoc signed staged copy actually launches (no SIGKILL) and the retained engine runs the patched pack.",
+			"how": "run_game.sh prints 'staged bundle signature verified' before launch, records codesign_verify.log, and requires live RLBRIDGE output."
+		},
+		{
+			"item": "GDRE --pck-patch accepts brand-new res:// paths and the patched pack boots under the vanilla engine.",
+			"how": "bash ocean/brotato/bridge/run_game.sh; the inventory records the output pack hash and the log must contain RLBRIDGE lines."
+		},
+		{
+			"item": "The rewritten steam.gd.remap redirect is honoured for the global class SteamPlatform.",
+			"how": "log must contain 'Steam singleton unavailable; SteamPlatform continues offline'.",
+			"fallback": "without it the DLC reports unowned and the bridge fails with character_not_found (available_dlc_ids empty)."
+		},
+		{
+			"item": "The movement script extension installs and serves; action_applied becomes 1.",
+			"how": "log line 'movement extension install ->' from mod_main._init; trace rows with action_applied == 1 and no action_verify_error; meta.action.injection.served_count > 0.",
+			"fallback": "if the extension does not install, the log says so and every row keeps action_applied 0 (the run still traces state)."
+		},
+		{
+			"item": "Wave 1 actually spawns inside the tick budget (expected ~120-240 ticks).",
+			"how": "trace/summary field first_enemy_tick and the per-second ARENA snapshot lines; a stall raises an explicit printerr naming the spawn path."
+		},
+		{
+			"item": "--no-window GL context creation on this macOS session, and the exact user:// location.",
+			"how": "engine exit status and the boot log; rerun with BROTATO_NO_WINDOW=0 if window creation fails."
+		},
+		{
+			"item": "Live shop/level-up offer reading (phase 1/2).",
+			"how": "only exercised if the run reaches the shop within the budget; unmapped ids appear in meta.obs.unmapped_ids and the affected slot keeps the core's empty-slot encoding."
+		}
+	],
+	"failure_codes_emitted_by_the_bridge": {
+		"autoload_timeout": "an autoload node never appeared within 600 frames",
+		"trace_open_failed": "BROTATO_RL_TRACE could not be opened for writing",
+		"trace_header_failed": "the partial-mode header line could not be written",
+		"obs_tables_missing": "brotato_obs_tables.json missing or unparsable (run gen_obs_tables.py)",
+		"character_not_found": "character_bull not in ItemService.characters (DLC pack missing or reported unowned)",
+		"difficulty_not_found": "no ItemService.difficulties element with value == danger",
+		"add_character_failed": "RunData.get_player_character(0) was null after add_character()",
+		"arena_never_loaded": "current scene never became 'Main' within 900 ticks",
+		"left_arena": "the scene left the arena (shop/level-up); the combat trace ends there",
+		"run_configuration_failed": "wrapper reason for the above during bootstrap",
+		"policy_load_failed": "aborts with a nonzero exit when action_source=policy and the artifact cannot load or the policy harness is disabled",
+		"policy_inference_failed": "aborts with a nonzero exit when policy mode cannot produce a valid policy action; no scripted substitution"
+	},
+	"integration_notes": [
+		"The launcher stages BrotatoAbyssalTerrors.pck and a minimal Brotato.app bundle beside the retail pack. The original retail files are never executed or modified.",
+		"run_game.sh reaps the engine with BROTATO_WATCHDOG (default 300 s); the bridge itself exits at its physics tick budget.",
+		"Section 4 of the runner-visible stall analysis: a paused tree (handled), a GDScript runtime error aborting a spawn function, zero players (main.gd:134 divides by RunData.get_player_count()), DebugService knobs, or an invalid zone index.",
+		"The recovered source tree still carries an earlier session's source-backed hook (project.godot RLBridge autoload, singletons/rl_bridge.gd, main.gd:116-117). It does not exist in the retail PCK this bridge patches, but if a recovered-project build is ever run alongside it, two run starts would race.",
+		"Combat uses native analog actions. Shop buy/reroll/skip and level-up selection use live UI handlers. The upgrade_pool_proof run verified two purchases and one upgrade with zero incomplete observations.",
+		"Completed combat actions are snapshotted from pending_action at the start of verify(), before set_action() installs the next action. Snapshotting in set_action() reported an action one transition too old: live tick 1 moved northwest while the trace still reported hold.",
+		"The earlier aligned_seed1 replay diverged at tick 60 because the core omitted queued births. That lifecycle is now implemented. After aligning the initial hold and timer phase, post_lifecycle_seed1 matches through tick 122; first divergence is tick 123, obs[35], enemy position: live 0.264409 versus CPU 0.314899981, with zero action mismatches. Evidence: /tmp/brotato-phase-aligned-gate/comparison.txt.",
+		"Matching PCG primitives does not establish matching whole-game RNG stream ownership or draw ordering. Position/RNG divergence remains a transfer risk."
+	],
+	"transfer_risks": [
+		{
+			"risk": "The checkpoint's observation semantics are pinned to the core revision that was live when it trained, and the core is drifting (BT_ARENA_W/H 1280x720 -> 2048x1536, BT_MAX 64 -> 100 observed during this session by PolicyTransfer).",
+			"consequence": "obs[4], obs[5] and obs[67] are scaled differently from training, so a policy can look broken for reasons that have nothing to do with the artifact.",
+			"what_the_bridge_records": "meta.obs.core_revision = {obs_constants actually used, sha256 of brotato.h, brotato_core.h, brotato_state.h} and meta.obs.scale; meta.policy.metadata = the artifact's own schema; both side files are written for every run.",
+			"cutover": "The earlier legacy-divisor compatibility switch was removed on Main's instruction: the 81-wide weights are not valid under the 79-wide semantics and a new 79 checkpoint is authoritative. The bridge now emits one schema only; provenance is still recorded by hash."
+		},
+		{
+			"risk": "ocean/brotato/brotato_core.h declares BT_ACTIONS=31 (the v4 action migration in flight) while ocean/brotato/bridge/state_contract.json and the committed payload still describe 21 actions",
+			"consequence": "replay_cpu.py takes its action bound from state_contract.json, and the bridge's scripted action table is 21-wide, so a trace can only be interpreted against the contract revision it was produced with; consumers must read the contract from the trace/meta rather than the live headers.",
+			"what_the_bridge_records": "meta.contract (full_v3), meta.obs_definition.record_columns, and the per-row contract field; the tables artifact additionally carries core_revision.obs_constants.BT_ACTIONS",
+			"cutover": "AuditObsAction/Main own the v4 action contract; the bridge payload and state_contract.json must move together."
+		}
+	],
+	"instrumentation_notes": [
+		"Operational note (from the parent): '--check-only' partly instantiates autoloads (Entity/Utils/Keys cycles) and is not a valid check for bridge scripts; game-mode parsing is the real test, so the launcher never passes it.",
+		"The loader-state measurement is written to both user://rl_bridge_diag.json and BROTATO_RL_DIAG (rl_out/rl_bridge_diag.json) so it survives a crash and is readable without the game's user dir.",
+		"The parent's live boot predates boot_diag (it used the 19-entry pack, which contained the removed store-remap diagnostic), so the absence of an RLBRIDGE-DIAG line in that log is expected for that build."
+	],
+	"chronology_corrections": [
+		"The 19-entry payload (store remap + inheritance based diag) never shipped to a successful run other than the parent's check; its self-cycle is confirmed as a fault but the disabled-mod message predates it.",
+		"Earlier 'the cause must be CLI-only' reasoning was wrong: with ml_options null the same message appears with no flag at all.",
+		"The policy artifact was re-exported by the policy workstream (sha256 618787da0a796db7c6f8700511a85d5abb177046fc3c05fce6b0e458f925f0f0, layout.obs_size 79, source_checkpoint.train_time_revision = None, encoder_inputs_dropped = 2) and the manifest pin was refreshed.",
+		"The core item/effect tables are moving while other workstreams add data (247 items / 326 effects at this refresh); the observation tables artifact records the exact header hashes it was generated from, so the revision is pinned per artifact rather than frozen in the bridge."
+	],
+	"diagnosis_decision_tree": {
+		"ml_options_present": "false  -> the store's script did not initialise; the disabled message is the null path, independent of argv (compare store_script_path and autoload_bindings)",
+		"enable_mods": "true -> a disabled message would not come from this store instance; check autoload_bindings, root_children and argv before concluding anything"
+	},
+	"known_failures": [
+		{
+			"item": "Original-game versus shared-core enemy position/RNG divergence",
+			"owner": "shared simulation",
+			"impact": "The scripted, non-invulnerable 161-observation Bull trace contact161_normal and CPU replay match through tick 187 at atol=rtol=1e-5; the first difference is tick 188 obs[36], 1.1698e-5. Both first lose health at tick 278 and first heal at tick 308 after contact and regeneration corrections; the first health mismatch is tick 329. All 480 actions match; full simulation transfer parity is unproven. Enemy hurtbox and charmed-contact timing have not been independently validated."
+		},
+		{
+			"item": "Full trained-policy episodes have not been validated through every game phase",
+			"owner": "bridge/policy workstream",
+			"impact": "source_complete_policy_verified exercises combat, one upgrade and one real shop purchase, but repeatedly selects the consumed slot instead of leaving. The 2097152-step policy does not demonstrate improved wave clearing over the baseline; a full Danger-5 clear remains unproven."
+		},
+		{
+			"item": "macOS vs Linux game-trace divergence in material/XP pickup accounting",
+			"owner": "shared simulation / bridge",
+			"impact": "Same command line, same seed: the macOS trace and the Linux trace agree bit-for-bit for 279 ticks and then differ first at tick 280 (gold 31 vs 30, xp 1 vs 0); the damage ticks agree exactly (278/308/329/359/451) and living enemy counts agree at every row. Candidate cause: the game's visual-effect sites draw from the GLOBAL RNG stream (EffectsManager.play_hit_effect randf()/rand_range, Screenshaker._process randf() per frame, FloatingText.display rand_range) and their draw count depends on rendering/timing, which shifts later gameplay draws. rl_run.gd now forces ProgressData.settings.screenshake/visual_effects/damage_display off (the game's own switch for those sites) and the run meta records the live values plus the remaining unguarded draw sites (floating_text_manager.gd:15/19/25/35/52/57/106 -> floating_text.gd:17, and Utils.get_rand_element -> Array.pick_random sound picks). Not proven to be the whole difference; no tolerance was widened anywhere."
+		},
+		{
+			"item": "Observer used uninitialised memory for absent enemy slots (fixed)",
+			"owner": "bridge observer",
+			"impact": "PoolRealArray.resize() does not initialise the elements it grows, and the enemy block advanced past its unused slots without writing them, so obs[36]/obs[48] could carry a previous allocation's bits (observed 2.89e10, 5.87e17 and NaN on Linux; the same defect made 108/2700 rows of the instant-waves shop run and 99/480 rows of a contended run invalid JSON because Godot's JSON.print writes a bare nan literal). Fixed in rl_obs.gd (the buffer is zeroed after resize and the enemy padding is written explicitly) and rl_trace.gd now refuses to emit a non-finite observation: it writes 0.0 at the offending indices and marks that row obs_complete=0, so a trace stays parseable and never claims a complete observation it does not have."
+		},
+		{
+			"item": "ModLoader state in a reused user directory can disable the mods (harness)",
+			"owner": "launcher",
+			"impact": "With a user directory reused from earlier runs, one launch printed 'Mods are currently disabled' and the engine never instantiated the bridge (the same pack and command line boot and pass with a fresh directory; ModLoader keeps mod_user_profiles.json / mod_loader_cache.json there). run_game.sh now recreates the isolated home for every run and keys its default path by BROTATO_TAG (BROTATO_KEEP_ISO_HOME=1 keeps the old behaviour), which also makes concurrent runs safe because they no longer share one user directory."
+		}
+	],
+	"claim_hygiene": {
+		"rule": "anything that requires a successful run is recorded under unverified_requires_smoke or known_failures, never as verified",
+		"retracted": [
+			"earlier 'CLI-only cause' for the mods-disabled message (a null ml_options produces the same message with no flag)",
+			"earlier 'the 19-entry store remap explains the earlier failures' (it is a confirmed fault but predates them)",
+			"earlier 'user-data isolation implemented' (the mechanism was measured; the launcher exports were absent)",
+			"earlier claim that rl_progress.shop_action performed a faithful shop purchase: the direct buy_item/buy_weapon calls granted items without debiting currency or consuming the offer. The real transaction lives in base_shop.gd on_shop_item_bought (~494-518); the parent now drives the ShopItem control / ShopItemsContainer.on_shop_item_buy_button_pressed(slot) and reads slot.value for affordability in the observation. rl_progress.gd and rl_obs.gd are parent-owned from that change.",
+			"earlier claim that the movement script extension was the injection mechanism: measured never dispatched in this engine build (the instance had the takeover metadata and the extension's private method, yet the inherited method resolved to the base); the extension, the direct-state diagnostic and the adaptive switch were all removed once the four-analog-action input path was proven.",
+			"The launcher moved into the repository at ocean/brotato/bridge/run_game.sh with no compatibility shim. The old beside-executable override.cfg staging was removed; isolation is enforced through HOME/CFFIXED_USER_HOME and a runtime path check."
+		]
+	},
+	"acceptance_rules": {
+		"completeness": "obs_complete = 1 requires all 161 values to be real or documented empty encodings, with no observer errors or unmapped values.",
+		"gate": "parse_trace --check fails on any row with obs_complete = 0 (incomplete rows), plus the enemy/max_hp/movement/action-source rules.",
+		"shop_buy": "phase-1 row with action 0..3, action_applied = 1 and a gold change, driven through ShopItemsContainer.on_shop_item_buy_button_pressed; failed attempts keep the game's own reason"
+	},
+	"runtime_validation": {
+		"shop_observation": "The 161-value live Bull smoke produced 1500 complete rows; a scripted purchase spent the observed 17 gold and cleared the purchased offer. Native shop observation checks covered affordability, eligibility, purchase delay, and Demon currency. The 161-input policy has not yet been trained or evaluated.",
+		"native_behavior": "All 33 native behavior executables passed after the weapon and typed-shop integration.",
+		"python_contracts": "299 tests passed and 5 were skipped with recovered campaign/DLC sources and the pinned Godot engine.",
+		"cpu_throughput": "Per-profile, 800000 environment steps in 5.67 s for Bull, 5.41 s for Knight and 5.55 s for Demon; two zones, identical-seed and invariant checks passed. sizeof(BtState)=6731680 bytes. This includes paired checking, not isolated stepping.",
+		"physics_throughput": "Fixed 100-body, 8-iteration solver workload: 20000 steps in 0.651320 seconds, 30707 physics steps/s, 6804000 contact-pair steps.",
+		"end_to_end_training": "CPU-environment/Metal-trainer Bull run completed 2097152 steps in 59.07 seconds, nonfinite=0 in the reported epochs. Across 32 bounded evaluation episodes the trained checkpoint scored 166.09375 versus 170.53125 for the baseline. An extended 16777216-step checkpoint scored 169.0625 over 32 episodes; its 1500-row original-game run used policy actions with no incomplete observations, selected one upgrade and bought one item, then failed 179 shop actions on an empty slot without leaving. Improved performance and a Danger-5 clear remain unproven.",
+		"metal_status": "Apple M1 Pro, current 161-observation build: reset, partial dispatch and 256-step determinism passed; the Bull trajectory covered 5886 steps. Knight/hatchet combat parity fails at step 200: wpn_melee_rot differs by 2.38e-7.",
+		"cuda_status": "Device closure syntax probe passed; execution and throughput require an NVIDIA host/toolkit.",
+		"linux_original_game": {
+			"trace": "480-row Bull/Danger 5/seed 1 scripted episode produced on Linux x86_64 (the macOS rl_trace.contact161_normal settings): 161 floats per row, obs_complete=1 on all 480 rows, 0 incomplete rows, first enemy tick 123, 389 recorded movement applications with 0 verification mismatches, engine exit status 0, CHECK OK",
+			"shop_smoke": "with BROTATO_RL_INSTANT_WAVES=1 the run walks waves 1..20 and shops; it exposed an observer defect (see known_failures: uninitialised PoolRealArray enemy slots produced NaN obs and invalid JSON) which is now fixed",
+			"cpu_replay_linux_trace": "replay_cpu.py (tests/brotato_core_trace.cpp built with g++) on the Linux trace: DIVERGED, first_divergence tick=279 path=enemies (game 3, CPU 5), max_abs_error 1.0, 0 action mismatches",
+			"cpu_replay_macos_trace": "the same replay against the historical macOS trace with the current core gives the identical first_divergence (tick 279, enemies, 3 vs 5), so the earlier macOS result (tick 188 obs[36] 1.17e-5, hp at 329) is superseded by later core changes: the game's and the core's damage ticks now agree exactly (278/308/329/359/451) and the first real difference is the enemy-death count",
+			"mac_vs_linux_game_trace": "bit-identical for the first 279 ticks (all 161 obs values and every scalar column); first difference tick 280 in material/XP pickup accounting (gold 31 vs 30, xp 1 vs 0), 188/480 rows then differ in obs by more than 1e-5, max abs difference 1.0. Two identical Linux runs with the same pack are byte-identical over all 480 rows, so the macOS/Linux gap is not run-to-run noise on Linux. See known_failures for the open cause."
+		},
+		"linux_demon": {
+			"traces_v3_161": "Demon/Danger 5/Ghost Scepter scripted runs produced on Linux with the 161-float contract (before AuditObsAction's v4 198-float landing): rl_trace.demon_s1.jsonl (2535 rows), demon_s2 (2549), demon_s3 (3980 rows, waves 1..8, first enemy tick 123, 0 incomplete rows), demon_endless (5519 rows, endless from wave 20, invulnerable). They validate against the v3 state_contract (obs width 161) only; the contract file has since moved to 198, so parse_trace --check now rejects them as a width mismatch.",
+			"wave_seconds_knob": "BROTATO_WAVE_SECONDS -> BROTATO_RL_WAVE_SECONDS -> DebugService.custom_wave_duration (main.gd:163-164) overrides every wave's duration, so a bounded run reaches shops and level-ups while enemies still spawn. instant_waves (1 s waves) ends a wave before the spawner fires, so it yields zero enemies - observed with Demon.",
+			"endless": "BROTATO_ENDLESS=1 sets ProgressData.settings.endless_mode_toggled and RunData.is_endless_run after RunData.reset() (the game's own endless_button.gd:8 copies the setting into the run flag; reset() clears it at run_data.gd:489, and run_data.gd:1766 then keeps is_last_wave false past wave 20). BROTATO_RL_WAVE=20 starts at wave 20."
+		}
+	},
+	"next_steps": [
+		"resolve measured enemy position/RNG divergence without changing the original-game oracle",
+		"validate the trained policy across combat, shop and upgrade phases through full episodes",
+		"regenerate external artifacts after simulation changes and retrain against recorded source revisions"
+	],
+	"bridge_version": "1.5.0",
+	"platforms": {
+		"macos": {
+			"status": "historical reference runs; run_game.sh keeps the bundle staging + ad-hoc signing path",
+			"engine": "vanilla Godot 3.7-dev1 commit 0a9011743 build, staged into Brotato.app",
+			"isolated_user_dir": "$HOME/CFFIXED_USER_HOME"
+		},
+		"linux_x11": {
+			"engine_build_command": "scons platform=x11 target=release_debug tools=yes -j8 (source tree of godot 3.7-dev1 commit 0a9011743f8b62e5f4505fd17ca61fc3621394ef, scons 4.11.1 on python 3.13); the resulting binary reports 3.7.dev.custom_build",
+			"engine_binary": "bin/godot.x11.opt.tools.64, copied to $HOME/tools/bin/godot-3.7-dev1",
+			"engine_sha256": "3b238159a7c3c0d88a6adbc54606e4710eec1ae038b94c22f8d75085182aa6d3",
+			"gdre": "GDRE Tools v2.7.4 for linux ($HOME/tools/gdre_linux/gdre_tools.x86_64, sha256 b6f75a4509af3f23f963b6d8533b6c4627714fd786d1dfc343649bac135f670b) - the same version as the macOS run; the decompiled steam.gd base text hashes identically on both platforms (6c9a6836f836773e0df89868c146d45f51edb6f6f0fc5d11a3058d0f0df7ce70), and GDRE's --pck-patch produced the same 17-entry payload inventory",
+			"launch": "xvfb-run -a -s \"-screen 0 1280x720x24\" <engine> --main-pack Brotato.rl.pck --fixed-fps 60 --audio-driver Dummy --enable-mods --no-window",
+			"why_xvfb": "Godot 3's x11 platform still creates an unmapped X window and a GLX context under --no-window (platform/x11/context_gl_x11.cpp:208, os_x11.cpp:932), so a display is required; with no DISPLAY the launcher wraps the run in xvfb-run and the software GL renderer is llvmpipe (Mesa). BROTATO_XVFB=0 disables the wrapper.",
+			"user_dir_isolation": "HOME + XDG_DATA_HOME/XDG_CONFIG_HOME/XDG_CACHE_HOME point into $BROTATO_RUN_DIR/isolated_home[.<tag>]; the run resolves user:// to <iso>/.local/share/Brotato/ and the launcher asserts it after exit. The directory is recreated empty per run (BROTATO_KEEP_ISO_HOME=1 to opt out) because ModLoader keeps its own state there and a stale directory came back as 'Mods are currently disabled' once.",
+			"staging": "retail Brotato.pck / BrotatoAbyssalTerrors.pck / steam_data.json are copied from <repo>/migration/game into the run directory; no bundle and no signing on Linux; the engine binary is used directly",
+			"engine_commit": "0a9011743f8b62e5f4505fd17ca61fc3621394ef (version.py: 3.7.0 dev, year 2024)"
+		}
+	}
+}

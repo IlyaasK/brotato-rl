@@ -1,0 +1,5 @@
+# Occupancy sweep for the 00:23 vs current-tree regression: is the slowdown per-tick
+# traffic (constant ratio) or lost memory-level parallelism (worse at low occupancy)?
+reg512_h64_mb8k  | --vec.total_agents=512  --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=4000000  --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+reg1024_h64_mb8k | --vec.total_agents=1024 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=8000000  --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+reg4096_h64_mb8k | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1

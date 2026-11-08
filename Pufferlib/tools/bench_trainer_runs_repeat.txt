@@ -1,0 +1,4 @@
+# reproducibility repeats of the headline trainer-only configs
+mb32k_4k_repeat | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=32768
+mb65k_4k_repeat | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=65536
+low1024_mb32k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1024 --train.horizon=64 --train.minibatch_size=32768

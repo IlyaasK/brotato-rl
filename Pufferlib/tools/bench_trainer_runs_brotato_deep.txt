@@ -1,0 +1,22 @@
+# Deep-endless vs shallow tick on GPU. [env] start_wave must be in the LOADED
+# config/brotato.ini (a CLI --env.start_wave override alone is rejected with
+# "missing key [env] start_wave"), so these runs use private cwds holding
+# config/{default,brotato}.ini:
+#   /home/ilyaas/pt_deep25 (25,1), /home/ilyaas/pt_deep40 (40,1), /home/ilyaas/pt_deep60
+#   (60,1), /home/ilyaas/pt_shal (1,0) = shallow control; all pin audio_rng = 0.
+# Each run advances agents*6000 game ticks.
+# Driver: ./tools/bench_trainer_brotato_deep_sweep.sh (after
+# ./tools/bench_trainer_make_deep_cwds.sh creates the cwds).
+# Resolved inputs (Main's rule: record what actually ran, don't assume): start_wave is
+# verified by `env/perf` in the log (perf == start_wave means the boot took effect);
+# audio_rng has no runtime log key, so it is pinned to 0 (the Demon/eval setting) in
+# both routes (private cwds / the CLI --env.audio_rng=0 branch of the driver) and is
+# recorded here. Agents are capped at 6144 because sizeof(BtState) is now 1.505 MiB.
+deep25_4096_h64_mb8k     | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+deep40_4096_h64_mb8k     | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+deep60_4096_h64_mb8k     | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+deep60_4096_h64_mb8k_nog | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=-1
+deep60_6144_h64_mb8k     | --vec.total_agents=6144 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=36864000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+deep60_4096_h128_mb32k   | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+shal_4096_h64_mb8k       | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=24576000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter
+shal_6144_h64_mb8k       | --vec.total_agents=6144 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=36864000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter

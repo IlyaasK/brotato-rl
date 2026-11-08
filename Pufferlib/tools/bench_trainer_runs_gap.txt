@@ -1,0 +1,6 @@
+# Gap-filling runs: small-policy ceiling with a large minibatch, and a
+# large-agent + large-minibatch combination.
+pol128x1_65k_mb64k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=65536
+pol128x1_4k_mb64k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=65536
+pol256x2_262k_h32_mb262k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=262144 --train.horizon=32 --train.minibatch_size=262144
+pol256x2_65k_mb32k_sync | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=32768 --base.async=0

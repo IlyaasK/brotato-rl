@@ -1,0 +1,246 @@
+{
+	"bridge": "rlbridge-headlessrl",
+	"bridge_version": "1.6.0",
+	"description": "Patch payload that turns the retail Brotato PCK into an RL-instrumented build. The retail pack is never modified: GDRE --pck-patch writes a new pack from it. Bridge-owned files live in this repository under mod/; shared files are referenced in place (base=repo); generated or proprietary-derived files are referenced from the external root and are never committed.",
+	"payload_root": "mod",
+	"source_roots": {
+		"payload": "this directory / mod",
+		"repo": "repository root (auto-detected by walking up to the directory containing ocean/brotato)",
+		"external": "default <repo>/migration/game/external, else $HOME/brotato_mod/external; override with --external-root or $BROTATO_EXTERNAL_ROOT"
+	},
+	"files": [
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/manifest.json",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/manifest.json",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "7245fedff9d02f185e56f62af161b049725bda398bfb27830655b6ccacc57005",
+			"reason": "ModLoader manifest for mod id rlbridge-headlessrl (the directory name must equal {namespace}-{name}); fields validated against res://addons/mod_loader/resources/mod_manifest.gd of the retail pack."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/mod_main.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/mod_main.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "45fd07092bc39b7a18dcb5d52d3b390c98bd23b3e2d92d604de5d9d8f0aa652c",
+			"reason": "Mod entry point instantiated by ModLoader: waits for the game autoloads, repairs settings, applies them through ProgressData, boots the run via rl_run.gd (optional starting weapon), writes the full 141-float trace across combat/shop/level-up with the 21-action space and quits at the tick budget."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_cfg.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_cfg.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "8be33243c9af49cca9cebeda20339ea9b408bacf6246a0ba75ceae5f95206b19",
+			"reason": "Environment-variable configuration table; resolved values are copied into the run meta file."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_env.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_env.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "36b1b5bcda95da60d3becd089440746afc69ab2dfe52890062fcf5f048ce1448",
+			"reason": "Repairs JSON-null/absent entries in the loaded settings from the game's own defaults (language, volume, enemy_scaling, deactivated_dlcs, fullscreen, font_size, ...) and applies them via ProgressData.apply_settings() before the run start; fullscreen is suppressed through DebugService.no_fullscreen_on_launch."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_policy.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_policy.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "96eabeaedb510d60b43fd502fe910865e3c843be97b007b523b9e3500da8d861",
+			"reason": "Optional policy harness: loads the exported policy artifact, resets on run start and steps once per sample tick, and rejects any observation whose width differs from the artifact's (no padding, fail closed). Movement/shop action injection is implemented in rl_inject.gd / rl_progress.gd; the packaged 79-wide artifact is stale for the 141-float observer."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_run.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_run.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "01a30c4d87eb341b930a591be36409722b340f89b7b5fb6c00a25017abd6d781",
+			"reason": "Canonical Bull/Danger-N run start: the exact call sequence of title_screen.gd, character_selection.gd, weapon_selection.gd and difficulty_selection.gd, including an explicit starting weapon added through RunData.add_weapon(..., is_selection=true) before RunData.add_starting_items_and_weapons()."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_trace.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_trace.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "5843abf9e4764c0ea38cc97003848e8c332f5f57e8ded7a4e48a4cac9229c623",
+			"reason": "Trace writer: the full 141-float observation rows (no header) and the partial diagnostics artifact (first line is a bridge_header record so the file cannot satisfy a full-observation contract), plus live scene-node helpers."
+		},
+		{
+			"dest": "res://singletons/platforms/steam.gd.remap",
+			"src": "res/singletons/platforms/steam.gd.remap",
+			"base": "payload",
+			"kind": "replace",
+			"sha256": "c7f730c3bdcecdf19b602456b0c909a75e84537f487bcc717ce702cd527fb57f",
+			"reason": "Recovers the offline Steam platform. The retail pack resolves res://singletons/platforms/steam.gd through this .remap to steam.gdc; the rewritten .remap points the global class SteamPlatform at the external offline copy instead.",
+			"replaces": {
+				"path": "res://singletons/platforms/steam.gd.remap",
+				"sha256": "27ea4875f344c3f9b1925324c0aafef81c31acca40ef1dd10f4ef55071bf213a",
+				"content": "[remap]\n\npath=\"res://singletons/platforms/steam.gdc\"\n",
+				"extracted_with": "GDRE Tools v2.7.4 --extract --include=res://singletons/platforms/steam.gd.remap"
+			}
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/brotato_policy.gd",
+			"src": "ocean/brotato/policy/brotato_policy.gd",
+			"base": "repo",
+			"kind": "add",
+			"sha256": "25ad41855afdf195d01726459aad25e5feb25a7736ec45432f0c0f2f8b6250c8",
+			"reason": "GDScript port of the trained network's forward pass (extends Reference, no class_name so it can be loaded from the pack at runtime). Referenced in place from its owning workstream so there is a single source of truth."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/patches/steam_offline.gd",
+			"src": "steam_offline.gd",
+			"external": true,
+			"kind": "add",
+			"sha256": "1cd335372d783d8674c7c7330cb786436ccff71d9e64ec1c58f48342938daa4c",
+			"reason": "Offline-safe SteamPlatform: the retail steam.gdc decompilation plus (1) the null guard that sets init_error and (2) a two-line boot-diagnostics hook that adds the diag/boot_diag.gd node. Both are recorded in the generated file's header and in the external provenance sidecar; the base text is proprietary game code and stays outside the repository.",
+			"generate_with": "python3 ocean/brotato/bridge/make_steam_offline_patch.py",
+			"derived_from": {
+				"retail_path": "res://singletons/platforms/steam.gdc",
+				"retail_pck": "Brotato.pck (host-independent identity: basename plus sha256; the generated header records both, so regeneration is byte-identical on any host)",
+				"decompiled_sha256": "6c9a6836f836773e0df89868c146d45f51edb6f6f0fc5d11a3058d0f0df7ce70",
+				"generator": "ocean/brotato/bridge/make_steam_offline_patch.py",
+				"bytecode_revision": "a7aad78",
+				"sidecar": "<external root>/steam_offline.provenance.json (records the generating host's absolute paths; deliberately kept out of the generated file)"
+			}
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/brotato_policy.json",
+			"src": "brotato_policy.json",
+			"external": true,
+			"optional": true,
+			"kind": "add",
+			"sha256": "43433008902c2e9e4f9b6733d76ffe43bafc21171912a7f68b70a0f87f36c0e7",
+			"reason": "STALE / UNUSABLE for the current 141-float observer. This is a 79-wide exported policy: rl_policy.gd rejects any observation whose width differs from the artifact's, so with action_source=policy the run fails closed at boot (obs_schema_mismatch / policy rejected) and never substitutes scripted actions. It is kept only as the historical plumbing artifact (its checkpoint trained with a trainer-era OBS_SIZE of 81; encoder inputs 79/80 were constant 0.0 and the exporter drops them via --trim-encoder-inputs 2). It must be re-exported from a Bull policy retrained at 141 wide before it is described as valid; until then do not present it as matching the bridge observation.",
+			"generate_with": "python3 ocean/brotato/policy/export_policy.py --checkpoint checkpoints/brotato/1794017564-44661/0000000019922944.bin --output /Users/leelachebiyyam/brotato_mod/external/brotato_policy.json --obs-size 81 --hidden 256 --layers 2 --actions 9 --trim-encoder-inputs 2",
+			"derived_from": {
+				"checkpoint": "checkpoints/brotato/1794017564-44661/0000000019922944.bin",
+				"checkpoint_sha256": "3dcfba67832be3313338fa5d4ef077e7bc2bdcc9ec414dd0180de8e72d2b7104",
+				"encoder_inputs_dropped": 2,
+				"exporter": "ocean/brotato/policy/export_policy.py",
+				"verified_by": "PolicyTransfer: 79-trimmed vs 81-fed-79+2zeros = 0.0 max abs diff over 18 recurrent steps on the real weights; Godot 3.7.dev1 forward matches the reference over 5 steps"
+			}
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_obs.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_obs.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "f1ae7f1e4141cae5a4a94ae79ced1a0c183819855bf5e758178c97b302eef360",
+			"reason": "The 141-float core observation ported 1:1 from bt_core_observe (brotato_core.h) plus the frozen WeaponSchema map (brotato_weapon_observe.h): the 79 core features (player/shop/level-up/enemy/projectile/consumable, six-nearest enemy selection sort, three-nearest projectile rule) followed by six owned-weapon records x 8, four typed shop-offer records x 3 and two profile fields. Weapon tier/kind come from the canonical BT_WEAPONS row and cooldown/damage/range/crit from the live Weapon node's current_stats; a shop/level-up row carries the last captured arena weapon block. No field is padded or invented. The obs[165..168] lock flags are durable RunData state in every phase: a slot with a live offer is locked when that offer matches a lock entry by my_id (base_shop.gd:277-289), and a slot with no live offer keeps the entry's own flag (the lock list survives the shop scene, cleared only on the next shop entry at base_shop.gd:110-120, and its entries occupy the leading slots in push_back order per base_shop.gd:360-380) -- without that fallback the GO frame reported every slot unlocked though RunData still held the lock (v5_demon_s3 row 1854)."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_inject.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_inject.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "997a5a30d3e2826f844c5d65f583f1a86cd5efa9632d7d62a065153e5e0dc440",
+			"reason": "Action selection (policy or deterministic scripted sequence) and movement injection through the native analog actions; owns the core BT_MOVE_X/BT_MOVE_Y table (21 actions: 0-8 movement, 9-20 nonmovement HOLD) and the action_applied verification."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/brotato_obs_tables.json",
+			"src": "brotato_obs_tables.json",
+			"external": true,
+			"kind": "add",
+			"sha256": "72321207c754ecc4f1a62f7fc5211109c8bc965c8036d9d0a704f31197aa73c5",
+			"reason": "Item/upgrade/weapon/character observation tables generated from the core's own headers (brotato_items.h BT_ITEMS/BT_ITEM_EFFECTS, brotato_upgrades.h BT_UPGRADES, brotato_weapons.h BT_WEAPONS per-tier rows, brotato_characters.h BT_CHARACTERS order) plus the core stat display-name lists from brotato.h. Required: without them the shop/level-up slots and the 141-float weapon/profile block cannot be encoded in the core's format. Generated, never committed.",
+			"generate_with": "python3 ocean/brotato/bridge/gen_obs_tables.py",
+			"derived_from": {
+				"items": "ocean/brotato/brotato_items.h",
+				"upgrades": "ocean/brotato/brotato_upgrades.h",
+				"weapons": "ocean/brotato/brotato_weapons.h",
+				"characters": "ocean/brotato/brotato_characters.h",
+				"core_header": "ocean/brotato/brotato.h",
+				"generator": "ocean/brotato/bridge/gen_obs_tables.py",
+				"provenance_paths": "repo-relative (gen_obs_tables.display_path) so the artifact and this pin are host-independent; the recorded sha256 fields are the real revision pins"
+			}
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/rl_progress.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/rl_progress.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "6bb766b01cc2da5d08647ce46e901df51be08d0c98f63ba9cfb57f68cdd3093e",
+			"reason": "Progression actions driven through the game's own handlers so waves advance: shop buy via base_shop.on_shop_item_buy_button_pressed, reroll via _on_RerollButton_pressed (:400), skip via _on_GoButton_pressed (:298), recycle via _on_item_discard_button_pressed (:707), combine via _on_item_combine_button_pressed (:622), level-up choice via UpgradesUIPlayerContainer._on_choose_button_pressed -> choose_button_pressed -> UpgradesUI._on_choose_button_pressed -> upgrade_selected -> Main.on_upgrade_selected (:185/:203). Each action is followed by a phase-specific post-condition check that decides action_applied (gold moved, offer list changed, scene left the shop, or the owned weapon count dropped by one)."
+		},
+		{
+			"dest": "res://mods-unpacked/rlbridge-headlessrl/diag/boot_diag.gd",
+			"src": "res/mods-unpacked/rlbridge-headlessrl/diag/boot_diag.gd",
+			"base": "payload",
+			"kind": "add",
+			"sha256": "b81954c60fc31b53620443103a3e9bf2625d4f90a33d58f8eea8a39c125ba5fb",
+			"reason": "Boot diagnostics + loader-option repair node. Added as a child of the offline Steam platform (Platform autoload #3) and also called statically from that script's _init, so one RLBRIDGE-DIAG line is emitted unconditionally at boot. It then polls the Engine main loop for the ModLoaderStore autoload (no scene-tree signals, no loader script remap, no inheritance) and records: the authoritative autoload bindings from ProjectSettings, the command line, feature tags, user-dir settings, the store's actual script path, its resolved ml_options, the options resource/profile and their enable_mods. If enable_mods is false it is enabled through that dictionary and recorded, with the original value kept. No gameplay is performed."
+		},
+		{
+			"dest": "res://steam_data.json",
+			"src": "steam_data.json",
+			"external": true,
+			"kind": "add",
+			"sha256": "af0ba7b029eae0f8cd5851ea58508d90f329599f9b5a68e3e0c8fe0c7da4146c",
+			"reason": "Retail steam_data.json (app_id + workshop tags), patched into the pack because ModLoader resolves its game directory through _ModLoaderPath.get_local_folder_dir(), which returns \"res://\" under this engine's editor feature; without res://steam_data.json the loader logs a missing-file error and cannot resolve a workshop app id. The same file is also staged next to the executable for a hypothetical non-editor run.",
+			"derived_from": {
+				"retail_path": "/Users/leelachebiyyam/workspace/Brotato.v1.1.14.6/game/Brotato/common/Brotato/steam_data.json",
+				"app_id": "1942280",
+				"content_sha256_note": "copied verbatim by smoke.sh from the user's own retail install"
+			}
+		}
+	],
+	"modloader": {
+		"staging_requirements": {
+			"BrotatoAbyssalTerrors.pck": "Needed for character_bull. Under the editor feature Utils.get_game_dir() returns res://, so the game's own ProgressData.load_dlc_pcks() cannot find the retail DLC pack (a nested pack cannot be loaded from inside the main pack). The launcher exports BROTATO_RL_DLC_PCK=<run dir>/BrotatoAbyssalTerrors.pck and the bridge calls ProjectSettings.load_resource_pack() from its _init - i.e. during ModLoader #6, before ProgressData #9 runs - after which res://dlcs/ exists and the game's own DLC discovery proceeds normally.",
+			"steam_data.json": "Read from _ModLoaderPath.get_local_folder_dir()/steam_data.json. Under the editor feature that is res://, so the pack entry res://steam_data.json (from the external root, copied verbatim from the retail install) satisfies it; smoke.sh also stages a copy in the run directory for a non-editor run. Without it ModLoader logs a missing-file error (benign, but it also cannot resolve a workshop app id)."
+		}
+	},
+	"environment_isolation": {
+		"status": "PROVEN by the parent's smoke run: with the launcher's HOME/CFFIXED_USER_HOME exports in place the engine resolved user:// under the /tmp scratch root, and the loader diagnostics reported ml_options_present = true and enable_mods = true.",
+		"mechanism": "the launcher must export HOME and CFFIXED_USER_HOME to <run dir>/isolated_home before executing the engine; the engine then resolves ~/Library/Application Support/<project name> inside that root",
+		"measured_engine_behaviour": {
+			"home_is_honoured": "probe: throwaway project run headless with HOME=<scratch> resolved user:// to <scratch>/Library/Application Support/<name> and created it there (real home untouched)",
+			"home_is_honoured_with_this_pack": "probe: --main-pack with the patched pack and HOME=<scratch> resolved user:// to <scratch>/Library/Application Support/Brotato (real home untouched)",
+			"override_cfg_in_project_dir": "honoured (custom_user_dir_name applied)",
+			"override_cfg_inside_a_pack": "NOT applied in --main-pack mode (application/config/custom_user_dir_name stays empty), which is why no override.cfg is packaged or staged"
+		},
+		"observed_failure": "earlier 18-entry smoke: user_dir still the real HOME because smoke.sh contained only the ISO_HOME variable and the post-run assertion - no export of HOME/CFFIXED_USER_HOME (an earlier patch of mine targeted a block the parent had already removed). The isolation gate rejected that run instead of treating it as isolated.",
+		"verification": "launcher (parent-owned) exports both variables and the bridge's own smoke gate asserts the diagnostics' user_dir is under BROTATO_ISO_HOME, exiting 3 otherwise; the parent's run satisfied it.",
+		"owner": "launcher/smoke.sh is owned by the parent as of this failure; the engine behaviour evidence above is independent of it.",
+		"observed_success": "parent smoke: user_dir under the scratch root; ml_options true; enable_mods true; the earlier stat-hash (5381) runtime fault was separate and is addressed by rl_run.ensure_challenge_stat_hashes()",
+		"unused_staging_removed": "override.cfg: nothing is staged.  The in-pack file was measured not to be applied in --main-pack mode and a non-code file in Contents/MacOS breaks the staged bundle's signature, so there is no override.cfg step anywhere."
+	},
+	"ownership": {
+		"parent": [
+			"ocean/brotato/brotato_core.h",
+			"ocean/brotato/brotato_state.h",
+			"brotato_player_visual.h",
+			"brotato_birth_audio.h"
+		],
+		"weapon_schema": [
+			"state_contract.json",
+			"gen_obs_tables.py",
+			"brotato_weapon_observe.h"
+		],
+		"bridge_owner": [
+			"mods-unpacked/rlbridge-headlessrl/mod_main.gd",
+			"rl_cfg.gd",
+			"rl_env.gd",
+			"rl_run.gd",
+			"rl_trace.gd",
+			"rl_inject.gd",
+			"rl_obs.gd",
+			"rl_progress.gd",
+			"parse_trace.py",
+			"replay_cpu.py",
+			"run_game.sh (canonical launcher)",
+			"patch_manifest.json"
+		],
+		"note": "The manifest pins the exact bytes of every entry, so edits by either owner are detected by build_mod_pck.py verify; generated external artifacts (brotato_obs_tables.json after the weapons/characters tables land, steam_offline.gd, brotato_policy.json) must be regenerated with their current generator and the manifest hashes refreshed before a build if verify reports staleness. Launches use: bash ocean/brotato/bridge/run_game.sh (defaults derive from the repo, HOME is isolated, DLC/steam files default to the run dir, BROTATO_CHAR/BROTATO_WEAPON select the profile)."
+	},
+	"movement": {
+		"authoritative_path": "the bridge node presses/releases the four analog actions the original movement behavior reads (analog_move_left/right/up/down, i.e. PlayerMovementBehavior.get_vector_for_input_prefix(\"analog_\") for a single non-coop player) from Unit's own input path; MovementBehavior, Unit._can_move, collision and knockback are untouched.",
+		"applied_criterion": "a row's action_applied is 1 when the player's _current_movement after the step equals the vector the ENGINE derives from the pressed actions (Input.get_vector at verify time), not a table value; HOLD presses nothing and is a real, replayable action that never registers movement.",
+		"removed": {
+			"script_extension": "removed after the input path was proven: the ModLoader script extension on res://entities/units/movement_behaviors/player_movement_behavior.gd was measured never to be dispatched in this engine build (instance reports the takeover metadata and has the extension's private method, yet the inherited method resolves to the base and served_count stayed 0).",
+			"direct_state_diagnostic": "removed as obsolete: writing the unit's _current_movement/_move_locked proved movement works (952 of 1200 rows applied in the diagnostic run) but it bypasses the native input path, so it is not retained.",
+			"adaptive_switch": "never delivered as a design: the mode was explicit, and both alternate modes are now gone."
+		}
+	}
+}

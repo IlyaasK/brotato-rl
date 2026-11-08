@@ -1,0 +1,9 @@
+# Equal-GAME-TIME comparison: total_timesteps = agents * ticks_per_env, so every run
+# steps the same number of game ticks per env (Demon + Ghost Scepter). Demon/endless
+# tick cost grows with wave depth, so SPS from runs of different game length is not
+# comparable -- that is what made the first sweep non-monotonic in agents.
+eq4096_t8000 | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=32768000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+eq8192_t8000 | --vec.total_agents=8192 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=65536000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+eq8192_t8000_nog | --vec.total_agents=8192 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=65536000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=-1
+eq8192_t24000 | --vec.total_agents=8192 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --train.total_timesteps=196608000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+eq4096_t24000_h128_mb32k | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --train.total_timesteps=98304000 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1

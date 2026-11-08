@@ -1,0 +1,13 @@
+# fp32 (--float) subset of the bf16 matrix; otherwise identical settings.
+# Run with:  --bin build/bench_breakout_fp32 --out build/bench_sps_fp32
+pol032x1_4k | --policy.hidden_size=32 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=32 --train.minibatch_size=8192
+pol128x1_4k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_1k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1024 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+pol256x4_65k | --policy.hidden_size=256 --policy.num_layers=4 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_131k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=131072 --train.horizon=64 --train.minibatch_size=8192
+h256_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=8192
+mb65k_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=65536
+nograh_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=8192 --base.cudagraphs=-1

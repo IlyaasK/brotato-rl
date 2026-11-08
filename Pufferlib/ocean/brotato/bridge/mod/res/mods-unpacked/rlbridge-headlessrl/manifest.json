@@ -1,0 +1,28 @@
+{
+	"name": "headlessrl",
+	"namespace": "rlbridge",
+	"version_number": "1.0.0",
+	"description": "Headless RL bridge: boots Bull at Danger 5 through the game's own RunData API and writes a partial JSONL state trace. See rl_cfg.gd for the environment configuration.",
+	"website_url": "",
+	"dependencies": [],
+	"extra": {
+		"godot": {
+			"authors": [
+				"omp"
+			],
+			"compatible_mod_loader_version": [
+				"6.3.0"
+			],
+			"compatible_game_version": [
+				"1.1.14"
+			],
+			"optional_dependencies": [],
+			"incompatibilities": [],
+			"load_before": [],
+			"tags": [
+				"rl"
+			],
+			"description_rich": ""
+		}
+	}
+}

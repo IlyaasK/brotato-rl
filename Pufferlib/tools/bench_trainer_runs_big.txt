@@ -1,0 +1,8 @@
+# Extra large-batch breakout runs: the two configs the main matrix could not fit
+# (agents % (minibatch_size/horizon) == 0 is required, and the first attempt OOM'd
+# on the rollout buffer at 1M agents x horizon 16).
+# Run with: --bin build/bench_breakout_bf16 --out build/bench_sps_big
+agents262k_h32_mb8k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=262144 --train.horizon=32 --train.minibatch_size=8192
+agents524k_h16_mb8k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=524288 --train.horizon=16 --train.minibatch_size=8192
+agents1048k_h8_mb8k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1048576 --train.horizon=8 --train.minibatch_size=8192 --base.async=0
+agents1048k_h8_mb64k_sync | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1048576 --train.horizon=8 --train.minibatch_size=65536 --base.async=0

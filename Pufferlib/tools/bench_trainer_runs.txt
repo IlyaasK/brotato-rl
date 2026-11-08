@@ -1,0 +1,56 @@
+# Trainer SPS matrix. Format: name | extra argv
+# Breakout CUDA env (obs 118, act 3, breakouts' perf/env ~0) => these numbers are
+# the trainer (rollout net + PPO learner) ceiling for this policy shape.
+# Defaults come from config/default.ini + config/breakout.ini; every line below
+# overrides policy/vec/train explicitly.
+# --- policy x agent count --------------------------------------------------
+pol032x1_4k | --policy.hidden_size=32 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=32 --train.minibatch_size=8192
+pol128x1_4k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol512x2_4k | --policy.hidden_size=512 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol256x1_4k | --policy.hidden_size=256 --policy.num_layers=1 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol256x4_4k | --policy.hidden_size=256 --policy.num_layers=4 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+pol128x1_1k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=1024 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_1k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1024 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_16k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=16384 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_131k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=131072 --train.horizon=64 --train.minibatch_size=8192
+pol256x2_262k_h32 | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=262144 --train.horizon=32 --train.minibatch_size=8192
+pol256x2_1M_h16_sync | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=1000000 --train.horizon=16 --train.minibatch_size=8192 --base.async=0
+pol128x1_65k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+pol512x2_65k | --policy.hidden_size=512 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+pol256x4_65k | --policy.hidden_size=256 --policy.num_layers=4 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192
+# --- horizon / minibatch at 4096 agents (Brotato-scale batch) --------------
+h16_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=16 --train.minibatch_size=8192
+h128_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192
+h256_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=256 --train.minibatch_size=8192
+mb1k_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=1024
+mb32k_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=32768
+mb65k_4k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=65536
+# --- horizon / minibatch at 2048 agents (BtState memory cap) ---------------
+h32_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=32 --train.minibatch_size=8192
+h128_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=128 --train.minibatch_size=8192
+h256_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=8192
+h512_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=512 --train.minibatch_size=8192
+mb2k_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=2048
+mb65k_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=65536
+mb262k_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=262144
+pol128x1_h512_2k | --policy.hidden_size=128 --policy.num_layers=1 --vec.total_agents=2048 --train.horizon=512 --train.minibatch_size=8192
+# --- horizon / minibatch at 65k agents ------------------------------------
+h32_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=32 --train.minibatch_size=8192
+h128_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=128 --train.minibatch_size=8192
+mb4k_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=4096
+mb32k_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=32768
+mb256k_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=262144
+# --- trainer switches ------------------------------------------------------
+nograh_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192 --base.cudagraphs=-1
+sync_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192 --base.async=0
+buf2_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --vec.num_buffers=2 --train.horizon=64 --train.minibatch_size=8192
+buf4_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --vec.num_buffers=4 --train.horizon=64 --train.minibatch_size=8192
+nograh_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=8192 --base.cudagraphs=-1
+sync_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=256 --train.minibatch_size=8192 --base.async=0
+buf2_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --vec.num_buffers=2 --train.horizon=256 --train.minibatch_size=8192
+buf4_2k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --vec.num_buffers=4 --train.horizon=256 --train.minibatch_size=8192
+rr4_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192 --train.replay_ratio=4.0
+reset_h_65k | --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=64 --train.minibatch_size=8192 --base.reset_every_horizon=1

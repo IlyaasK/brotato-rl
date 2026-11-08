@@ -1,0 +1,15 @@
+# admiral CUDA env: obs 188, 15 discrete action heads (5,5,3 x5) -> plain MLP
+# policy, closest available stand-in for Brotato's obs 161 / 21-action MLP.
+# selfplay must be off: the GPU env backend asserts against multi-policy.
+# Run with: --bin build/bench_admiral_bf16 --out build/bench_sps_admiral
+adm_pol256x2_2k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=2048 --train.horizon=128 --train.minibatch_size=8192
+adm_pol256x2_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192
+adm_pol256x2_4k_h64 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=64 --train.minibatch_size=8192
+adm_pol128x2_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=128 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192
+adm_pol512x2_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=512 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192
+adm_pol256x2_16k_h64 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=16384 --train.horizon=64 --train.minibatch_size=8192
+adm_pol256x2_65k_h32 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=65536 --train.horizon=32 --train.minibatch_size=8192
+adm_mb65k_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=65536
+adm_mb32k_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=32768
+adm_nograh_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192 --base.cudagraphs=-1
+adm_sync_4k_h128 | --selfplay.enabled=0 --policy.hidden_size=256 --policy.num_layers=2 --vec.total_agents=4096 --train.horizon=128 --train.minibatch_size=8192 --base.async=0

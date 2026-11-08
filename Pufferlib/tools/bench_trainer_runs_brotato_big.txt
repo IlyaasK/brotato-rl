@@ -1,0 +1,18 @@
+# Brotato with the SHRUNK BtState (1.753 MiB/agent after ReplayDivergence's compact
+# contact pool + ragged item pool landed; was 6.42 MiB this morning). Binary:
+# build/bench_brotato_bf16, built from the live tree. Same policy (hidden 256 x2)
+# and Demon-profile core as the earlier vruns, horizon 64 / minibatch 8192.
+# total_agents must stay divisible by minibatch_size/horizon = 128 here.
+# PREDICTION vs the measured old-state law (SPS = 2.15e-4 * agents, 6.42 MiB
+# BtState): 2048 -> 0.44M, 4096 -> 0.88M, 4864 -> 1.05M, 5632 -> 1.21M. If the
+# per-tick DRAM traffic fell with the pools (phys 1.81->0.244 MB, rowvar
+# 1.105->0.049 MB) the tick latency drops too and SPS scales with agents/tick,
+# i.e. 3-4x higher.
+brnew2048_h64_mb8k | --vec.total_agents=2048 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew4096_h64_mb8k | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew4864_h64_mb8k | --vec.total_agents=4864 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew5632_h64_mb8k | --vec.total_agents=5632 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew8192_h64_mb8k | --vec.total_agents=8192 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew8192_h128_mb32k | --vec.total_agents=8192 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
+brnew4096_h64_mb8k_nog | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=64 --train.minibatch_size=8192 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=-1
+brnew4096_h128_mb32k | --vec.total_agents=4096 --policy.hidden_size=256 --policy.num_layers=2 --train.horizon=128 --train.minibatch_size=32768 --env.character=demon --env.starting_weapon=weapon_ghost_scepter --base.cudagraphs=1
